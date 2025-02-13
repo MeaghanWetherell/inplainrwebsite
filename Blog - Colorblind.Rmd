@@ -1,0 +1,55 @@
+---
+title: "Untitled"
+output: html_document
+date: "2025-02-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+
+```{r}
+#######################################################################
+#This is an example of how to use the package colorBlindness          #
+#which runs your graphic through the different forms of colorblindness#
+#and also provides a desaturated (greyscale printed) version.         #
+#######################################################################
+#install.packages("colorBlindness")
+library(colorBlindness)
+#https://cran.r-project.org/web/packages/colorBlindness/vignettes/colorBlindness.html
+```
+
+```{r}
+#This is very easy to do with ggplot objects
+library(ggplot2)
+#create a ggplot
+plot1 <- ggplot(data = iris, aes(x = Sepal.Length, fill = Species))+
+  geom_histogram()
+#create a simulation of the colorblindness
+cvdPlot(plot1)
+
+
+
+
+#It is harder to do with non-ggplot items. You have to export them as pngs.
+#Then reimport them and turn them into rasters
+library(grid)
+library(png)
+
+#create and export the png
+png(filename = "plot2.png")
+plot(iris$Sepal.Length~iris$Sepal.Width, 
+       col = ifelse(iris$Species == "versicolor", "red", "green"),
+     pch=16)
+dev.off()
+
+#reimport it, turn into raster
+img <- readPNG("plot2.png")
+g <- rasterGrob(img)
+
+#now, simulate
+cvdPlot(g)
+
+```
