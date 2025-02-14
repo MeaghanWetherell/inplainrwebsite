@@ -1,35 +1,48 @@
 ---
 title: "Simulate Colorblindness and Grayscale in R"
-subtitle: "AKA, why Meaghan hates the default ggplot2 palette"
-output: html_document
+output: 
+  html_document:
+    toc: true
+    theme: sandstone
+    fig_width: 7
+    fig_height: 7
 author: "Meaghan Wetherell"
 date: "February 2025"
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE)
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message=FALSE, fig.align = 'center')
 ```
 
 # Introduction
-There are a few different packages for simulating colorblindness but my personal favorite at the moment is `colorblindr`. Unlike `colorblindness` which is a good alternative, `colorblindr` also shows you tritanopy. That feature makes it worth some of the pain-in-the butt additional code you have to do below.
+There are a few different packages for simulating colorblindness but my personal favorite at the moment is `colorblindr`. Unlike `colorblindness` which is a good alternative, `colorblindr` also shows you tritanopia or blue-yellow colorblindness. That feature makes it worth some of the pain-in-the butt additional code you have to do below.
 
-The examples below use version `r packageVersion("colorblindr")` and there is also a (walkthrough)[https://github.com/clauswilke/colorblindr] available. 
+The examples below use version `r packageVersion("colorblindr")` and there is also a [walkthrough](https://github.com/clauswilke/colorblindr) available from the authors. 
+
+## Learning Outcomes
+By the end of this walkthrough you will see code and examples so that you should be able to:
+
+*  Use `cvd_grid()` to simulate colorblindness and grayscale versions of your plot
+*  Install packages from gitub using the `remotes` package
+*  Turn your base R plots into grobs using `as.grob()` from `ggplotify`
+*  Explain why the default ggplot2 colorscheme is bad
+*  Pick colorblind friendly palettes
 
 # Install and Load Packages
-Unfortunately, `colorblindr` is not on the CRAN server, it is on github. Use the `install_github()` function from the `remotes` packages to install this and its dependencies (`cowplot` and `colorspace`). 
+Unfortunately, `colorblindr` is not on the CRAN server, it is on github. Use the `install_github()` function from the `remotes` packages to install this and its dependencies (`cowplot` and `colorspace`).
 ```{r eval = FALSE}
+install.packages("remotes")
 remotes::install_github("wilkelab/cowplot")
 install.packages("colorspace", repos = "http://R-Forge.R-project.org")
 remotes::install_github("clauswilke/colorblindr")
-
 ```
 
-For simulating on base R plots, we'll need an extra package, `ggplotify`. 
+For simulating on base R plots instead of ggplots, we'll need an extra package, `ggplotify`. 
 ```{r eval=FALSE}
 install.packages("ggplotify")
 ```
 
-And then, don't forget to load your packages, including ggplot2
+And then, don't forget to load your packages, including `ggplot2`!
 ```{r}
 library(colorblindr)
 library(ggplotify)
@@ -38,11 +51,10 @@ library(ggplot2)
 
 
 # Simulate Colorblindness with ggplot2
-To start, I'm going to create some a basic graphics for demonstration purposes, using the `iris` dataset.
+To start, I'm going to create some a basic ggplot graphics for demonstration purposes, using the `iris` dataset.
 ```{r fig.show = "hide"}
-library(ggplot2)
-plot1 <- ggplot(data = iris, aes(x = Sepal.Length, fill = Species)) + 
-  geom_histogram() + 
+plot1 <- ggplot(data = iris, aes(x = Sepal.Length, y = Sepal.Width, col = Species)) + 
+  geom_point(size = 2) + 
   theme(legend.position = "bottom", legend.title = element_blank())
 ```
 
@@ -54,20 +66,18 @@ cvd_grid(plot1)
 
 
 # Simulate Colorblindness with base R
-Unfortunately, the regular `cvd_grid()` function doesn't work with base R plots. But there are a few workarounds. The shortest I've found is to turn your plot into a grob, using `as.grob()` from the `ggplotify` package to make it readable. 
-
+Unfortunately, the regular `cvd_grid()` function doesn't work with base R plots, e.g. those made using `plot()` or `hist()`. But there are a few workarounds. The shortest I've found is to turn your plot into a grob object, using `as.grob()` from the `ggplotify` package to make it readable. 
 
 ```{r}
-bad.col <- c(versicolor = "red", setosa = "green", virginica = "orange")
-
-plot3 <- as.grob(~plot(iris$Sepal.Length,  iris$Sepal.Width, col = bad.col[factor(iris$Species)]))
+bad.col <- c("red", "green", "orange")
+plot3 <- as.grob(~plot(iris$Sepal.Length,  iris$Sepal.Width, col = bad.col[factor(iris$Species)], pch=16))
 
 cvd_grid(plot3)
-```
+```  
 
-A few wierd code points. We have to use `~`, and you can't call out the plot early, name it, and then continue on, which is very odd. 
+A few weird code points. You have to use `~` in front of your plot code, and you can't call out the plot early, name it, and then continue on.
 
-Turns out that once you use the plot() function, it changes it into a class 'NULL' object and that breaks `as.grob()`'s brains all the way open. So the following versions will not convert to a ggplot object and will not work.
+Turns out that once you use the plot() function, it changes it into a class 'NULL' object and that breaks `as.grob()`'s brains all the way into gooey component pieces. So the following versions will not convert to a ggplot object and will not work. You can try them though, if you don't believe me!
 
 ```{r eval = FALSE}
 wtf <- plot(iris$Sepal.Length,  iris$Sepal.Width, col = bad.col[factor(iris$Species)])
@@ -77,17 +87,19 @@ as.grob(expression(wtf))
 ```
 
 # Why Meaghan Hates The Default Color Scheme
-Yes, the default `ggplot2` colorscheme is a very pretty rainbow... but it is a rainbow of bullshit and garbage. Here is a demonstration of why it's bad. First, let's make some fake data with plenty of groups.
+And now we get to the meat of this post, the juicy nitpicking rage. Yes, the default `ggplot2` colorscheme is pretty. I can appreciate the greatness of a rainbow, I grew up in the era of technicolor acid-drop Lisa Frank trapper keepers, but this color scheme is different. It is a rainbow of lies and is only pretty the same way an oilspill is.  
+
+Don't worry, I have evidence to support my thesis. First, let's make some fake data with plenty of groups.
 ```{r}
 x <- rnorm(n = 200, mean = 50, sd = 7)
 y <- rnorm(n = 200, mean = 40, sd = 7)
 group.letters <- sample(c("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K"),size = 200, replace = TRUE)
 fake.data <- data.frame(x, y, group.letters)
-smol.fake.data <- fake.data %>% filter(group.letters %in% c("A", "B", "C", "D", "E", "F"))
+smol.fake.data <- subset(fake.data, group.letters %in% c("A", "B", "C", "D", "E", "F"))
 ```
 
-Now, let's make a scatterplot, using all those groups as the color variables. That's 11 groups, which is a lot.
-```{r}
+Now, let's make a scatterplot, using all those groups as the color variables. That's 11 groups, which is a lot, and leads us to my first point: **the default scheme is bad even if you have good color vision.**
+```{r fig.height=5}
 start.plot <- ggplot(fake.data, aes(x = x, y = y, col = group.letters)) + geom_point(size = 3)
 
 start.plot
@@ -95,32 +107,48 @@ start.plot
 
 Can you tell the difference between F and G? Next to each other, maybe, but I dare you to figure out which one is which on the plot.Find one or two you're super confident about, then look at this labelled plot of them.
 
-```{r}
+```{r fig.height=5}
 start.plot + geom_text(label = group.letters, col = "black", nudge_x = .5, nudge_y = .5)
 ```
 
-So once you get past about 6 categories, the default color scheme is pretty hard to read even if you have super awesome color vision. And if you don't, or if you're printing something in grayscale, that turns out to be even harder:
+Don't lie to yourself - you know that was an impossible challenge. It shouldn't take you 5 minutes to identify a single dot! And once you get past about 6 categories, the default color scheme is pretty hard to read even if you have super awesome color vision. 
 
+Which brings me to point 2, as demonstrated by `colorblindr`: **if you don't have awesome color vision, the default scheme is even worse!** That means if you're colorblind or printing things out in grayscale (you ancient, decrepit tree destroyer you), then this is what you get:
 ```{r}
 cvd_grid(start.plot)
 ```
 
 # But Meaghan, What Palettes Should I Use?
-There are so, so many! For example, ggplot2 now has the viridis color scheme embedded in it. Which still is rough for an 11 group palette, but works fine for versions with fewer groups.
+There are so, so many! The issue we're looking at here is relying overly much on **hue** of a color to convey meaning. But color isn't just red or green. It's dark red, light green, desaturated orange, etc. Play around with **value** (how dark or light it is) and **saturation** (how much grey is in it) and you'll be able to overcome these issues. 
 
 ```{r}
+less.bad.col <- c("red3", "darkgreen", "orange")
+cvd_grid(as.grob(~plot(iris$Sepal.Length,  iris$Sepal.Width, col = less.bad.col[factor(iris$Species)], pch=16)))
+```
+
+Also, there are many other palettes! For example, ggplot2 now has the viridis color scheme embedded in it. Which still is rough for an 11 group palette, but works fine for versions with fewer groups.
+```{r fig.height=5}
 ggplot(smol.fake.data, 
        aes(x = x, y = y, col = group.letters)) + 
   geom_point(size = 3)+ 
   scale_color_viridis_d()
 ```
 
-And the `colorblindR` package comes with its own helpful little palette for up to 8 groups, `OkabeIto`
-```{r}
+And the `colorblindR` package comes with its own helpful little palette for up to 8 groups, `OkabeIto`.
+```{r fig.height=5}
 ggplot(smol.fake.data, 
        aes(x = x, y = y, col = group.letters)) + 
   geom_point(size = 3)+
   scale_color_OkabeIto()
+```
+
+R comes with quite a few different palettes that should be easy to use, including diverging and sequential palettes. You can access a list of these using `palette.pals()` for qualitative color schemes and `hcl.pals()` for sequential or diverging palettes. Then, you can create a list of colors using either `palette.colors()` or `hcl.colors()`, setting the palette you want and the number of colors you need.
+```{r results="hide"}
+hcl.pals()
+palette.pals()
+
+new.col <- hcl.colors(n = 11, palette = "Green-Yellow" )
+qual.col <- palette.colors(n = 11, palette = "Paired" )
 ```
 
 And let's not forget that you don't have to use just color! You can change shapes, you can change point sizes, you can facet out by group, or you could combine categories! Just please, please, don't use the default color palette. 
